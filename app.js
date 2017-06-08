@@ -9,6 +9,7 @@ var bodyParser   = require('body-parser');
 var config = require("./src/util/config");
 var MongoClient = require('mongodb').MongoClient , assert = require('assert');
 var versionRoutes = require("./src/routes/version_routes");
+var userRoutes = require("./src/routes/user_routes");
 
 //Use express
 var app = express();
@@ -22,6 +23,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 //Create routes
 versionRoutes(app);
+userRoutes(app);
 
 //Open port and start application
 app.listen(config.port, () => console.log('App started listening on port', config.port));

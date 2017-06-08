@@ -6,6 +6,7 @@
 module.exports = {
     db: process.env.MONGODB_URI || 'mongodb://localhost:27017/appver',
     collection: "appver",
+    user: "userappver",
     port: process.env.port || 8080,
     secret: '@VErsIOnAPpMODuLeSEcReT?172d5',
     HttpResponseStatus: {
