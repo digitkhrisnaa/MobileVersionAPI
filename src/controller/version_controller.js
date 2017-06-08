@@ -46,15 +46,18 @@ module.exports.insert = function(req, res) {
     "data" : {
       "android" : {
         "version" : req.body.android_ver,
-        "force_update" : req.body.android_force,
+        "force_update" : (req.body.android_force == 'true'),
         "link_update" : req.body.android_link
       },
       "ios" : {
         "version" : req.body.ios_ver,
-        "force_update" : req.body.ios_force,
+        "force_update" : (req.body.ios_force == 'true'),
         "link_update" : req.body.ios_link
       }
-    }
+    },
+    "credential" : ["admin"],
+    "time_created" : new Date(),
+    "last_updated" : new Date()
   }
 
   MongoClient.connect(config.db, function(err, db) {
@@ -119,6 +122,8 @@ module.exports.update = function(req, res) {
   if (req.body.ios_link != null) {
     objectUpdate["data.ios.link_update"] = req.body.ios_link
   }
+
+  objectUpdate["last_updated"] = new Date()
 
   MongoClient.connect(config.db, function(err, db) {
     db.collection(config.collection).updateOne({"_id" : objectID}, {$set : objectUpdate}, function(err, result){
