@@ -67,6 +67,10 @@ module.exports.insert = function(req, res) {
     return jsonResponse(res, config.HttpResponseStatus.BadRequest, "app name must be declared", null)
   }
 
+  if (req.body.app_description == null) {
+    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "description must be declared", null)
+  }
+
   if (req.body.android_ver == null || req.body.android_force == null || req.body.android_link == null) {
     return jsonResponse(res, config.HttpResponseStatus.BadRequest, "Android properties must be declared", null)
   }
