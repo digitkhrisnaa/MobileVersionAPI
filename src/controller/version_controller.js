@@ -286,8 +286,8 @@ module.exports.invite = function(req, res) {
     return jsonResponse(res, config.HttpResponseStatus.BadRequest, "App id must be declared", null)
   }
 
-  if (req.body.user_invited_id == null || req.body.user_invited_id == "") {
-    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User invited ID must be declared", null)
+  if (req.body.user_invited_email == null || req.body.user_invited_email == "") {
+    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User invited email must be declared", null)
   }
 
   if (req.body.user_id == null || req.body.user_id == "") {
@@ -298,16 +298,11 @@ module.exports.invite = function(req, res) {
     return jsonResponse(res, config.HttpResponseStatus.BadRequest, "App ID is not valid object", null)
   }
 
-  if (!ObjectID.isValid(req.body.user_invited_id) == null || req.body.user_invited_id == "") {
-    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User invited ID is not valid object")
-  }
-
   if (!ObjectID.isValid(req.body.user_id)) {
     return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User ID is not valid object", null)
   }
 
   var appObjectID = new ObjectID(req.body.app_id)
-  var userInvitedObjectID = new ObjectID(req.body.user_invited_id)
   var userObjectID = new ObjectID(req.body.user_id)
 
   MongoClient.connect(config.db, function(err, db ) {
@@ -327,7 +322,7 @@ module.exports.invite = function(req, res) {
         return jsonResponse(res, config.HttpResponseStatus.BadRequest, "You dont have access", null)
       }
 
-      db.collection(config.user).findOne({"_id" : userInvitedObjectID}, function(invitedErr, invitedUser) {
+      db.collection(config.user).findOne({"email" : req.body.user_invited_email}, function(invitedErr, invitedUser) {
         if (invitedErr != null) {
           db.close()
           return jsonResponse(res, config.HttpResponseStatus.InternalServerError, "an error was occured", null)
@@ -335,7 +330,7 @@ module.exports.invite = function(req, res) {
 
         if (invitedUser == null) {
           db.close()
-          return jsonResponse(res, config.HttpResponseStatus.BadRequest, "Invited user ID not found", null)
+          return jsonResponse(res, config.HttpResponseStatus.BadRequest, "Invited email not found", null)
         }
 
         db.collection(config.collection).findOne({"_id" : appObjectID}, function(appErr, appData) {
@@ -350,7 +345,9 @@ module.exports.invite = function(req, res) {
           }
 
           var searchKey = {}
-          searchKey["credential"] = invitedUser._id
+          var credential = appData.credential
+          credential.push(invitedUser._id)
+          searchKey["credential"] = credential
           searchKey["meta.user_last_updated"] = user._id
           searchKey["meta.last_updated"] = new Date()
 
