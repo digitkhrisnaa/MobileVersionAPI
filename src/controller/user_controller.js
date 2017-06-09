@@ -30,7 +30,7 @@ module.exports.insert = function(req, res) {
   userRegister["password"] = crypto.createHash('md5').update(req.body.password).digest("hex") + userSalt
   userRegister["salt"] = userSalt
   userRegister["is_admin"] = (req.body.is_admin == 'true')
-  userRegister["app_identifier"] = crypto.randomBytes(48).toString('hex')
+  userRegister["app_identifier"] = crypto.randomBytes(8).toString('hex')
   userRegister["time_created"] = new Date()
   userRegister["last_updated"] = new Date()
 
