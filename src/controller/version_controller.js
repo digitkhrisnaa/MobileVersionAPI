@@ -277,6 +277,95 @@ module.exports.listSpesific = function(req, res) {
   })
 }
 
+module.exports.invite = function(req, res) {
+  if (req.body.app_id == null || req.body.app_id == "") {
+    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "App id must be declared", null)
+  }
+
+  if (req.body.user_invited_id == null || req.body.user_invited_id == "") {
+    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User invited ID must be declared", null)
+  }
+
+  if (req.body.user_id == null || req.body.user_id == "") {
+    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User id must be declared", null)
+  }
+
+  if (!ObjectID.isValid(req.body.app_id)) {
+    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "App ID is not valid object", null)
+  }
+
+  if (!ObjectID.isValid(req.body.user_invited_id) == null || req.body.user_invited_id == "") {
+    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User invited ID is not valid object")
+  }
+
+  if (!ObjectID.isValid(req.body.user_id)) {
+    return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User ID is not valid object", null)
+  }
+
+  var appObjectID = new ObjectID(req.body.app_id)
+  var userInvitedObjectID = new ObjectID(req.body.user_invited_id)
+  var userObjectID = new ObjectID(req.body.user_id)
+
+  MongoClient.connect(config.db, function(err, db ) {
+    db.collection(config.user).findOne({"_id" : userObjectID}, function(userErr, user) {
+      if (userErr != null) {
+        db.close()
+        return jsonResponse(res, config.HttpResponseStatus.InternalServerError, "an error was occured", null)
+      }
+
+      if (user == null) {
+        db.close()
+        return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User ID not found", null)
+      }
+
+      if (!user.is_admin) {
+        db.close()
+        return jsonResponse(res, config.HttpResponseStatus.BadRequest, "You dont have access", null)
+      }
+
+      db.collection(config.user).findOne({"_id" : userInvitedObjectID}, function(invitedErr, invitedUser) {
+        if (invitedErr != null) {
+          db.close()
+          return jsonResponse(res, config.HttpResponseStatus.InternalServerError, "an error was occured", null)
+        }
+
+        if (invitedUser == null) {
+          db.close()
+          return jsonResponse(res, config.HttpResponseStatus.BadRequest, "Invited user ID not found", null)
+        }
+
+        db.collection(config.collection).findOne({"_id" : appObjectID}, function(appErr, appData) {
+          if (appErr != null) {
+            db.close()
+            return jsonResponse(res, config.HttpResponseStatus.InternalServerError, "an error was occured", null)
+          }
+
+          if (appData == null) {
+            db.close()
+            return jsonResponse(res, config.HttpResponseStatus.BadRequest, "App ID not found", null)
+          }
+
+          var searchKey = {}
+          searchKey["credential"] = invitedUser._id
+          searchKey["meta.user_last_updated"] = user._id
+          searchKey["meta.last_updated"] = new Date()
+
+          db.collection(config.collection).updateOne({"_id" : appObjectID}, {$set : searchKey},
+            function(updateErr, updateRes) {
+            if (updateErr != null) {
+              db.close()
+              return jsonResponse(res, config.HttpResponseStatus.InternalServerError, "an error was occured", null)
+            }
+
+            db.close()
+            return jsonResponse(res, config.HttpResponseStatus.Success, "Success invite user", updateRes)
+          })
+        })
+      })
+    })
+  })
+}
+
 function jsonResponse(response, status, message, metadata) {
   return response.json({
     status: status,
