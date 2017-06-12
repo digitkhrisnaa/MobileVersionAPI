@@ -2,6 +2,7 @@ var MongoClient = require('mongodb').MongoClient,
     assert = require('assert'),
     ObjectID = require('mongodb').ObjectID;
 var config = require(".././util/config");
+var version = require(".././util/version");
 
 module.exports.list = function(req, res) {
   if (req.query.identifier == null || req.query.identifier == "") {
@@ -220,7 +221,7 @@ module.exports.update = function(req, res) {
         var updateHistoryIOS = []
 
         if (req.body.android_ver != null) {
-          var compareVersion = versionCompare(req.body.android_ver, appResult.data.android.version)
+          var compareVersion = version(req.body.android_ver, appResult.data.android.version)
           if (compareVersion == 1) {
             if (appResult.data.android.log == null) {
 
@@ -234,6 +235,7 @@ module.exports.update = function(req, res) {
               updateHistoryAndroid = appResult.data.android.log
               updateHistoryAndroid.forEach(function(index, value) {
                 if (value.version == req.body.android_ver) {
+                  db.close()
                   return jsonResponse(res, config.HttpResponseStatus.BadRequest, "Android Version already defined", null)
                 }
               })
@@ -246,12 +248,13 @@ module.exports.update = function(req, res) {
               updateHistoryAndroid.push(log)
             }
           } else if (compareVersion == -1) {
+            db.close()
             return jsonResponse(res, config.HttpResponseStatus.BadRequest, "New Android version must higher", null)
           }
         }
 
         if (req.body.ios_ver != null) {
-          var compareVersion = versionCompare(req.body.ios_ver, appResult.data.ios.version)
+          var compareVersion = version(req.body.ios_ver, appResult.data.ios.version)
           if (compareVersion == 1) {
             if (appResult.data.ios.log == null) {
 
@@ -265,6 +268,7 @@ module.exports.update = function(req, res) {
               updateHistoryIOS = appResult.data.ios.log
               updateHistoryIOS.forEach(function(index, value) {
                 if (value.version == req.body.ios_force) {
+                  db.close()
                   return jsonResponse(res, config.HttpResponseStatus.BadRequest, "iOS Version already defined", null)
                 }
               })
@@ -277,6 +281,7 @@ module.exports.update = function(req, res) {
               updateHistoryIOS.push(log)
             }
           } else if (compareVersion == -1) {
+            db.close()
             return jsonResponse(res, config.HttpResponseStatus.BadRequest, "New iOS version must higher", null)
           }
         }
@@ -457,53 +462,6 @@ module.exports.invite = function(req, res) {
       })
     })
   })
-}
-
-function versionCompare(v1, v2, options) {
-    var lexicographical = options && options.lexicographical,
-        zeroExtend = options && options.zeroExtend,
-        v1parts = v1.split('.'),
-        v2parts = v2.split('.');
-
-    function isValidPart(x) {
-        return (lexicographical ? /^\d+[A-Za-z]*$/ : /^\d+$/).test(x);
-    }
-
-    if (!v1parts.every(isValidPart) || !v2parts.every(isValidPart)) {
-        return NaN;
-    }
-
-    if (zeroExtend) {
-        while (v1parts.length < v2parts.length) v1parts.push("0");
-        while (v2parts.length < v1parts.length) v2parts.push("0");
-    }
-
-    if (!lexicographical) {
-        v1parts = v1parts.map(Number);
-        v2parts = v2parts.map(Number);
-    }
-
-    for (var i = 0; i < v1parts.length; ++i) {
-        if (v2parts.length == i) {
-            return 1;
-        }
-
-        if (v1parts[i] == v2parts[i]) {
-            continue;
-        }
-        else if (v1parts[i] > v2parts[i]) {
-            return 1;
-        }
-        else {
-            return -1;
-        }
-    }
-
-    if (v1parts.length != v2parts.length) {
-        return -1;
-    }
-
-    return 0;
 }
 
 function jsonResponse(response, status, message, metadata) {
