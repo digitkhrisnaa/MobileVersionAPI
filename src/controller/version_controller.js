@@ -204,21 +204,113 @@ module.exports.update = function(req, res) {
         return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User not found", null)
       }
 
-      db.collection(config.collection).updateOne({"_id" : objectID}, {$set : objectUpdate}, function(err, result){
+      db.collection(config.collection).findOne({"_id" : objectID}, function (err, appResult) {
         if (err != null) {
-          throw err
+          throw error
           db.close()
-          return jsonResponse(res, config.HttpResponseStatus.InternalServerError, "An error occured", null)
+          return jsonResponse(res, config.HttpResponseStatus.InternalServerError, "an error occurer", null)
         }
 
-        db.close()
-        if (result.result.n == 0) {
-          return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User is not found", null)
-        } else if (result.result.nModified == 0) {
-          return jsonResponse(res, config.HttpResponseStatus.SuccessNoContent, "Success with no modified data", null)
-        } else {
-          return jsonResponse(res, config.HttpResponseStatus.Success, "Success update data", result)
+        if (appResult == null) {
+          db.close()
+          return jsonResponse(res, config.HttpResponseStatus.BadRequest, "App ID not found", null)
         }
+
+        var updateHistoryAndroid = []
+        var updateHistoryIOS = []
+
+        if (req.body.android_ver != null) {
+          var compareVersion = versionCompare(req.body.android_ver, appResult.data.android.version)
+          if (compareVersion == 1) {
+            if (appResult.data.android.log == null) {
+
+              var log = {
+                "version" : appResult.data.android.version,
+                "force_update" : appResult.data.android.force_update
+              }
+
+              updateHistoryAndroid.push(log)
+            } else {
+              updateHistoryAndroid = appResult.data.android.log
+              updateHistoryAndroid.forEach(function(index, value) {
+                if (value.version == req.body.android_ver) {
+                  return jsonResponse(res, config.HttpResponseStatus.BadRequest, "Android Version already defined", null)
+                }
+              })
+
+              var log = {
+                "version" : appResult.data.android.version,
+                "force_update" : appResult.data.android.force_update
+              }
+
+              updateHistoryAndroid.push(log)
+            }
+          } else if (compareVersion == -1) {
+            return jsonResponse(res, config.HttpResponseStatus.BadRequest, "New Android version must higher", null)
+          }
+        }
+
+        if (req.body.ios_ver != null) {
+          var compareVersion = versionCompare(req.body.ios_ver, appResult.data.ios.version)
+          if (compareVersion == 1) {
+            if (appResult.data.ios.log == null) {
+
+              var log = {
+                "version" : appResult.data.ios.version,
+                "force_update" : appResult.data.ios.force_update
+              }
+
+              updateHistoryIOS.push(log)
+            } else {
+              updateHistoryIOS = appResult.data.ios.log
+              updateHistoryIOS.forEach(function(index, value) {
+                if (value.version == req.body.ios_force) {
+                  return jsonResponse(res, config.HttpResponseStatus.BadRequest, "iOS Version already defined", null)
+                }
+              })
+
+              var log = {
+                "version" : appResult.data.ios.version,
+                "force_update" : appResult.data.ios.force_update
+              }
+
+              updateHistoryIOS.push(log)
+            }
+          } else if (compareVersion == -1) {
+            return jsonResponse(res, config.HttpResponseStatus.BadRequest, "New iOS version must higher", null)
+          }
+        }
+
+        if (updateHistoryAndroid.length > 0) {
+          objectUpdate["data.android.log"] = updateHistoryAndroid
+          console.log("Android have update");
+        } else {
+          console.log("Android no update");
+        }
+
+        if (updateHistoryIOS.length > 0) {
+          objectUpdate["data.ios.log"] = updateHistoryIOS
+          console.log("iOS Have update");
+        } else {
+          console.log("iOS no update");
+        }
+
+        db.collection(config.collection).updateOne({"_id" : objectID}, {$set : objectUpdate}, function(err, result){
+          if (err != null) {
+            throw err
+            db.close()
+            return jsonResponse(res, config.HttpResponseStatus.InternalServerError, "An error occured", null)
+          }
+
+          db.close()
+          if (result.result.n == 0) {
+            return jsonResponse(res, config.HttpResponseStatus.BadRequest, "User is not found", null)
+          } else if (result.result.nModified == 0) {
+            return jsonResponse(res, config.HttpResponseStatus.SuccessNoContent, "Success with no modified data", null)
+          } else {
+            return jsonResponse(res, config.HttpResponseStatus.Success, "Success update data", result)
+          }
+        })
       })
     })
   })
@@ -365,6 +457,53 @@ module.exports.invite = function(req, res) {
       })
     })
   })
+}
+
+function versionCompare(v1, v2, options) {
+    var lexicographical = options && options.lexicographical,
+        zeroExtend = options && options.zeroExtend,
+        v1parts = v1.split('.'),
+        v2parts = v2.split('.');
+
+    function isValidPart(x) {
+        return (lexicographical ? /^\d+[A-Za-z]*$/ : /^\d+$/).test(x);
+    }
+
+    if (!v1parts.every(isValidPart) || !v2parts.every(isValidPart)) {
+        return NaN;
+    }
+
+    if (zeroExtend) {
+        while (v1parts.length < v2parts.length) v1parts.push("0");
+        while (v2parts.length < v1parts.length) v2parts.push("0");
+    }
+
+    if (!lexicographical) {
+        v1parts = v1parts.map(Number);
+        v2parts = v2parts.map(Number);
+    }
+
+    for (var i = 0; i < v1parts.length; ++i) {
+        if (v2parts.length == i) {
+            return 1;
+        }
+
+        if (v1parts[i] == v2parts[i]) {
+            continue;
+        }
+        else if (v1parts[i] > v2parts[i]) {
+            return 1;
+        }
+        else {
+            return -1;
+        }
+    }
+
+    if (v1parts.length != v2parts.length) {
+        return -1;
+    }
+
+    return 0;
 }
 
 function jsonResponse(response, status, message, metadata) {
