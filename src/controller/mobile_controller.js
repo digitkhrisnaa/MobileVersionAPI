@@ -42,6 +42,11 @@ module.exports.mobileVersionStatus = function(req, res) {
       if (req.query.app_platform == "android") {
         if (version(req.query.app_version, data.data.android.version) < 0) {
           var log = data.data.android.log
+
+          if (log == null) {
+            return jsonResponse(res, config.HttpResponseStatus.BadRequest, "Your version is not registered", null)
+          }
+
           var startIndex = arrayObjectIndexOf(log, req.query.app_version, "version")
 
           if (startIndex < 0) {
@@ -70,6 +75,11 @@ module.exports.mobileVersionStatus = function(req, res) {
       } else if (req.query.app_platform == "ios") {
         if (version(req.query.app_version, data.data.ios.version) < 0) {
           var log = data.data.ios.log
+
+          if (log == null) {
+            return jsonResponse(res, config.HttpResponseStatus.BadRequest, "Your version is not registered", null)
+          }
+          
           var startIndex = arrayObjectIndexOf(log, req.query.app_version, "version")
 
           if (startIndex < 0) {
